@@ -1,0 +1,91 @@
+# =============================================================================
+# FitProgress Backend — .gitignore
+# Fichiers a NE PAS committer sur git
+# =============================================================================
+
+# Variables d environnement — JAMAIS dans git (contiennent les secrets)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python — fichiers compiles et artefacts de build
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environnements virtuels Python
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+coverage.xml
+*.cover
+*.py,cover
+
+# Verification de types (mypy)
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Linters (ruff)
+.ruff_cache/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Systemes d exploitation
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Certificats SSL — generes a l execution, jamais dans git
+# privkey.pem contient la cle privee — critique de securite
+nginx/ssl/*.pem
+nginx/ssl/*.key
+nginx/ssl/*.crt
+
+# Logs
+*.log
+logs/
+
+# Fichiers temporaires
+*.tmp
+*.bak

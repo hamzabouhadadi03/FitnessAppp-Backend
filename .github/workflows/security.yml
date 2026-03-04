@@ -1,0 +1,13 @@
+name: Security
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+
+jobs:
+  security:
+    uses: hamzabouhadadi03/security-workflows/.github/workflows/fastapi-security.yml@main
+    with:
+      python-version: "3.12"
+      project-path: "."

@@ -1,0 +1,4 @@
+# Place Let's Encrypt SSL certificates here:
+# fullchain.pem
+# privkey.pem
+# Generate with: certbot certonly --standalone -d yourdomain.com
