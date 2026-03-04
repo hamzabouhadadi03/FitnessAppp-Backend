@@ -1,15 +1,69 @@
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
-sqlalchemy==2.0.30
-alembic==1.13.1
-asyncpg==0.29.0
-pydantic==2.7.1
-pydantic-settings==2.2.1
-python-jose[cryptography]==3.3.0
-httpx==0.27.0
-redis==5.0.4
-slowapi==0.1.9
-structlog==24.1.0
-python-multipart==0.0.9
-email-validator==2.1.1
-cryptography==42.0.7
+# =============================================================================
+# Dépendances FitProgress Backend
+# =============================================================================
+# Versions figées pour la reproductibilité des builds.
+# Mettre à jour régulièrement via : pip-audit / safety scan.
+# Dernière mise à jour sécurité : 2026-03-04
+
+# ------------------------------------------------------------------
+# Framework web + serveur ASGI
+# ------------------------------------------------------------------
+fastapi==0.135.1              # Inclut starlette >=0.46.0 → pip résout starlette 0.52.1
+                              # (corrige CVE-2024-47874, CVE-2025-54121, CVE-2025-62727)
+uvicorn[standard]==0.41.0     # Serveur ASGI (workers Gunicorn en prod)
+
+# ------------------------------------------------------------------
+# Base de données
+# ------------------------------------------------------------------
+sqlalchemy==2.0.30            # ORM async (select(), AsyncSession)
+alembic==1.13.1               # Migrations de schéma PostgreSQL
+asyncpg==0.29.0               # Driver PostgreSQL async natif
+
+# ------------------------------------------------------------------
+# Validation & configuration
+# ------------------------------------------------------------------
+pydantic==2.7.1               # Validation des schémas (v2)
+pydantic-settings==2.2.1      # Lecture des variables d'environnement
+
+# ------------------------------------------------------------------
+# Authentification JWT (Auth0 RS256)
+# ------------------------------------------------------------------
+# PyJWT remplace python-jose (abandonné, CVE-2024-33663 + CVE-2024-33664).
+# PyJWT est activement maintenu par l'équipe Okta/Auth0.
+PyJWT[crypto]==2.11.0         # Décodage/validation JWT RS256 ; [crypto] inclut cryptography
+
+# ------------------------------------------------------------------
+# Cryptographie
+# ------------------------------------------------------------------
+cryptography==46.0.5          # Backend RSA/AES ; corrige CVE-2024-12797 (OpenSSL embarqué)
+
+# ------------------------------------------------------------------
+# HTTP client async
+# ------------------------------------------------------------------
+httpx==0.27.0                 # Appels JWKS vers Auth0
+
+# ------------------------------------------------------------------
+# Cache
+# ------------------------------------------------------------------
+redis==5.0.4                  # Client Redis async (cache JWKS, sessions)
+
+# ------------------------------------------------------------------
+# Rate limiting
+# ------------------------------------------------------------------
+slowapi==0.1.9                # Middleware de limitation de débit (basé sur limits)
+
+# ------------------------------------------------------------------
+# Journalisation structurée
+# ------------------------------------------------------------------
+structlog==24.1.0             # Logs JSON structurés (corrélation request_id)
+
+# ------------------------------------------------------------------
+# Formulaires multipart
+# ------------------------------------------------------------------
+python-multipart==0.0.22      # Parsing multipart/form-data
+                              # Corrige CVE-2024-53981 (DoS CRLF) et CVE-2026-24486 (Path Traversal)
+
+# ------------------------------------------------------------------
+# Validation des e-mails
+# ------------------------------------------------------------------
+email-validator==2.1.1        # Validation syntaxique + DNS des adresses e-mail
