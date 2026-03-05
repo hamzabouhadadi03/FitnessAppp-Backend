@@ -147,44 +147,41 @@ async def get_overview(
     )
     session_counts = {row[0]: row[1] for row in count_result.all()}
 
-    # Premier journal par exercice (pour calculer l'évolution du poids)
+    # Premier journal par exercice — récupéré pour calculer l'évolution du poids
+    # (first_at par pde_id, puis jointure correcte sur program_day_exercise_id + created_at)
+    first_subq = (
+        select(
+            ProgressionLog.program_day_exercise_id,
+            func.min(ProgressionLog.created_at).label("first_at"),
+        )
+        .where(
+            ProgressionLog.user_id == current_user.id,
+            ProgressionLog.is_deleted.is_(False),
+        )
+        .group_by(ProgressionLog.program_day_exercise_id)
+        .subquery()
+    )
+
     first_result = await db.execute(
         select(ProgressionLog)
         .join(
-            select(
-                ProgressionLog.program_day_exercise_id,
-                func.min(ProgressionLog.created_at).label("first_at"),
-            )
-            .where(
-                ProgressionLog.user_id == current_user.id,
-                ProgressionLog.is_deleted.is_(False),
-            )
-            .group_by(ProgressionLog.program_day_exercise_id)
-            .subquery(),
-            (
-                ProgressionLog.program_day_exercise_id
-                == select(
-                    ProgressionLog.program_day_exercise_id,
-                    func.min(ProgressionLog.created_at).label("first_at"),
-                )
-                .where(
-                    ProgressionLog.user_id == current_user.id,
-                    ProgressionLog.is_deleted.is_(False),
-                )
-                .group_by(ProgressionLog.program_day_exercise_id)
-                .subquery()
-                .c.program_day_exercise_id
-            ),
+            first_subq,
+            (ProgressionLog.program_day_exercise_id == first_subq.c.program_day_exercise_id)
+            & (ProgressionLog.created_at == first_subq.c.first_at),
         )
         .where(ProgressionLog.user_id == current_user.id)
-        .limit(200)
     )
+    first_logs = {log.program_day_exercise_id: log for log in first_result.scalars().all()}
 
     items = []
     for log in latest_logs:
         pde = log.program_day_exercise
         exercise_name = pde.exercise.name if pde and pde.exercise else "Unknown"
-        current_w = log.suggested_weight_kg
+        current_w = log.suggested_weight_kg or 0.0
+        # Évolution du poids depuis la 1ère session : current - first
+        first_log = first_logs.get(log.program_day_exercise_id)
+        first_w = first_log.suggested_weight_kg or 0.0 if first_log else current_w
+        weight_change = round((current_w - first_w) * 2) / 2  # Arrondi au 0.5 kg
         items.append(
             ProgressionOverviewItem(
                 program_day_exercise_id=log.program_day_exercise_id,
@@ -192,7 +189,7 @@ async def get_overview(
                 current_weight_kg=current_w,
                 status=log.status,
                 total_sessions=session_counts.get(log.program_day_exercise_id, 0),
-                weight_change_kg=0.0,  # Simplifié — le calcul complet nécessite la jointure du premier journal
+                weight_change_kg=weight_change,
             )
         )
     return items
