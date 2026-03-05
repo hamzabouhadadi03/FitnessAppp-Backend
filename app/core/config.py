@@ -91,6 +91,28 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # -------------------------------------------------------------------------
+    # Celery (broker + backend = Redis)
+    # -------------------------------------------------------------------------
+    CELERY_BROKER_URL: str = ""   # défaut : REDIS_URL (calculé dans le validator)
+    CELERY_RESULT_BACKEND: str = ""  # défaut : REDIS_URL (calculé dans le validator)
+
+    # -------------------------------------------------------------------------
+    # Push notifications — APNs (iOS)
+    # -------------------------------------------------------------------------
+    APNS_ENABLED: bool = False
+    APNS_KEY_ID: str = ""       # Key ID 10 chars depuis Apple Developer Portal
+    APNS_TEAM_ID: str = ""      # Team ID 10 chars depuis Apple Developer Portal
+    APNS_BUNDLE_ID: str = ""    # Bundle ID de l'app iOS (ex : com.fitprogress.app)
+    APNS_PRIVATE_KEY: str = ""  # Contenu du fichier .p8 (AuthKey_XXXX.p8)
+
+    # -------------------------------------------------------------------------
+    # Push notifications — FCM (Android)
+    # -------------------------------------------------------------------------
+    FCM_ENABLED: bool = False
+    FCM_PROJECT_ID: str = ""           # Firebase project ID
+    FCM_SERVICE_ACCOUNT_JSON: str = "" # JSON du service account Firebase (contenu complet)
+
+    # -------------------------------------------------------------------------
     # Calculé
     # -------------------------------------------------------------------------
     @property
@@ -108,6 +130,11 @@ class Settings(BaseSettings):
                 raise ValueError("DEBUG must be False in production")
             if not self.CORS_ORIGINS:
                 raise ValueError("CORS_ORIGINS must be set in production")
+        # Celery URLs : utilise Redis par défaut si non défini
+        if not self.CELERY_BROKER_URL:
+            self.CELERY_BROKER_URL = self.REDIS_URL
+        if not self.CELERY_RESULT_BACKEND:
+            self.CELERY_RESULT_BACKEND = self.REDIS_URL
         return self
 
 

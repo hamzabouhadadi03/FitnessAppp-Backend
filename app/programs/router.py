@@ -122,6 +122,17 @@ async def add_day(
     return ProgramDayResponse.model_validate(day)
 
 
+@router.get("/{program_id}/days/{day_id}", response_model=ProgramDayResponse)
+async def get_day(
+    program_id: uuid.UUID,
+    day_id: uuid.UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> ProgramDayResponse:
+    day = await ProgramService.get_day(db, day_id, current_user.id)
+    return ProgramDayResponse.model_validate(day)
+
+
 @router.put("/{program_id}/days/{day_id}", response_model=ProgramDayResponse)
 async def update_day(
     program_id: uuid.UUID,

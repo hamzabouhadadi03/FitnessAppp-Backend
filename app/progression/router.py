@@ -23,6 +23,42 @@ router = APIRouter(prefix="/progression", tags=["Progression"])
 
 
 @router.get(
+    "/logs",
+    response_model=list[ProgressionLogResponse],
+    summary="List all progression logs for the authenticated user",
+)
+async def list_progression_logs(
+    program_day_exercise_id: uuid.UUID | None = None,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+) -> list[ProgressionLogResponse]:
+    """Retourne les journaux de progression de l'utilisateur.
+
+    Filtrable par `program_day_exercise_id` pour l'historique d'un exercice spécifique.
+    """
+    from sqlalchemy import select
+    from app.progression.models import ProgressionLog
+
+    query = (
+        select(ProgressionLog)
+        .where(
+            ProgressionLog.user_id == current_user.id,
+            ProgressionLog.is_deleted.is_(False),
+        )
+        .order_by(ProgressionLog.created_at.desc())
+        .limit(min(limit, 200))
+    )
+    if program_day_exercise_id:
+        query = query.where(
+            ProgressionLog.program_day_exercise_id == program_day_exercise_id
+        )
+    result = await db.execute(query)
+    logs = list(result.scalars().all())
+    return [ProgressionLogResponse.model_validate(log) for log in logs]
+
+
+@router.get(
     "/analysis/{program_day_exercise_id}",
     response_model=AnalysisResponse,
     summary="Get progression history and current suggestion for an exercise",

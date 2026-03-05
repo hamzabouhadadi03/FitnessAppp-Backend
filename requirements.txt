@@ -67,3 +67,17 @@ python-multipart==0.0.22      # Parsing multipart/form-data
 # Validation des e-mails
 # ------------------------------------------------------------------
 email-validator==2.1.1        # Validation syntaxique + DNS des adresses e-mail
+
+# ------------------------------------------------------------------
+# Tâches asynchrones (Celery + Redis broker)
+# ------------------------------------------------------------------
+celery[redis]==5.4.0          # Worker + Beat ; [redis] inclut kombu + redis transport
+kombu==5.3.4                  # Messagerie Celery (tiré par celery, fixé pour stabilité)
+
+# ------------------------------------------------------------------
+# Push notifications
+# ------------------------------------------------------------------
+# APNs (iOS) : HTTP/2 via httpx — h2 est le backend HTTP/2 pour httpx
+h2==4.1.0                     # HTTP/2 pour httpx (requis par APNs api.push.apple.com)
+# FCM (Android) : OAuth2 via service account Google
+google-auth==2.35.0           # Authentification Google OAuth2 pour FCM v1 REST API

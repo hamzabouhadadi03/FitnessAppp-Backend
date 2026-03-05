@@ -74,6 +74,47 @@ services:
     networks:
       - fitprogress_network
 
+  # ---------------------------------------------------------------------------
+  # Celery Worker (dev — tâches push notifications)
+  # ---------------------------------------------------------------------------
+  celery_worker:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fitprogress_celery_worker_dev
+    env_file:
+      - .env
+    command: celery -A app.core.celery_app worker --loglevel=info --queues=default,notifications --concurrency=2
+    volumes:
+      - .:/app
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - fitprogress_network
+
+  # ---------------------------------------------------------------------------
+  # Celery Beat (dev — planificateur de rappels d'entraînement)
+  # ---------------------------------------------------------------------------
+  celery_beat:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: fitprogress_celery_beat_dev
+    env_file:
+      - .env
+    command: celery -A app.core.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler --schedule=/tmp/celerybeat-schedule
+    volumes:
+      - .:/app
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - fitprogress_network
+
 volumes:
   postgres_data:
     driver: local
