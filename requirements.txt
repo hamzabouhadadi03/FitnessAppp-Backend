@@ -78,6 +78,6 @@ kombu==5.3.4                  # Messagerie Celery (tiré par celery, fixé pour 
 # Push notifications
 # ------------------------------------------------------------------
 # APNs (iOS) : HTTP/2 via httpx — h2 est le backend HTTP/2 pour httpx
-h2==4.1.0                     # HTTP/2 pour httpx (requis par APNs api.push.apple.com)
+h2==4.3.0                     # HTTP/2 pour httpx (requis par APNs api.push.apple.com) — CVE-2025-57804 fixed
 # FCM (Android) : OAuth2 via service account Google
 google-auth==2.35.0           # Authentification Google OAuth2 pour FCM v1 REST API
