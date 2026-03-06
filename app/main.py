@@ -22,7 +22,7 @@ from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-from app.core.database import connect_db, disconnect_db, get_db
+from app.core.database import connect_db, disconnect_db
 from app.core.exceptions import (
     AppException,
     app_exception_handler,
@@ -186,9 +186,9 @@ def create_app() -> FastAPI:
     # ------------------------------------------------------------------
     @app.get("/ready", tags=["Health"], summary="Readiness check")
     async def ready() -> dict:
-        from app.core.database import async_session_factory
+        from app.core.database import AsyncSessionLocal
         try:
-            async with async_session_factory() as session:
+            async with AsyncSessionLocal() as session:
                 await session.execute(text("SELECT 1"))
         except Exception as exc:
             logger.error("readiness_db_failed", error=str(exc))
