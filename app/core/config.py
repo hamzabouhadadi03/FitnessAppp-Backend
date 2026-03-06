@@ -58,6 +58,24 @@ class Settings(BaseSettings):
     AUTH0_AUDIENCE: str
     AUTH0_ALGORITHMS: list[str] = ["RS256"]
 
+    @field_validator("AUTH0_ALGORITHMS", mode="before")
+    @classmethod
+    def parse_algorithms(cls, v: Any) -> list[str]:
+        """Accepte 'RS256' ou 'RS256,HS256' ou '["RS256"]' — identique à CORS_ORIGINS."""
+        if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return ["RS256"]
+            # Essaie JSON d'abord (["RS256"]), sinon split virgule (RS256)
+            if v.startswith("["):
+                import json  # noqa: PLC0415
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
+            return [a.strip() for a in v.split(",") if a.strip()]
+        return v or ["RS256"]
+
     @property
     def AUTH0_JWKS_URL(self) -> str:
         return f"https://{self.AUTH0_DOMAIN}/.well-known/jwks.json"
