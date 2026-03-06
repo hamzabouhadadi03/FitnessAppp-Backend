@@ -5,11 +5,40 @@ Aucun secret n'est jamais codé en dur.
 """
 from __future__ import annotations
 
+import json
 from functools import lru_cache
-from typing import Any
+from typing import Any, Tuple, Type
 
 from pydantic import field_validator, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import (
+    BaseSettings,
+    EnvSettingsSource,
+    PydanticBaseSettingsSource,
+    SettingsConfigDict,
+)
+
+
+class _CommaOrJsonEnvSource(EnvSettingsSource):
+    """Source d'environnement qui accepte JSON *ou* chaînes brutes pour les champs list[str].
+
+    pydantic-settings 2.x tente de JSON-parser les champs complexes (list, dict…)
+    AVANT d'appeler les field_validators. Si la valeur n'est pas du JSON valide
+    (ex : ``CORS_ORIGINS=https://fitprogress.ovh``), une ``SettingsError`` est levée
+    immédiatement et les validators ne s'exécutent jamais.
+
+    Ce override retourne simplement la valeur brute en cas d'échec JSON, permettant
+    aux ``field_validator(mode="before")`` de prendre le relais.
+    """
+
+    def decode_complex_value(
+        self, field_name: str, field: Any, value: Any
+    ) -> Any:
+        try:
+            return super().decode_complex_value(field_name, field, value)
+        except Exception:
+            # Valeur non-JSON (ex : "RS256" ou "https://fitprogress.ovh") :
+            # on la retourne brute ; les field_validators la parseront.
+            return value
 
 
 class Settings(BaseSettings):
@@ -19,6 +48,23 @@ class Settings(BaseSettings):
         case_sensitive=False,
         extra="ignore",
     )
+
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: Type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        secrets_settings: PydanticBaseSettingsSource,
+    ) -> Tuple[PydanticBaseSettingsSource, ...]:
+        """Remplace la source env standard par notre version avec fallback JSON."""
+        return (
+            init_settings,
+            _CommaOrJsonEnvSource(settings_cls),
+            dotenv_settings,   # lecture directe du fichier .env (garde le support natif)
+            secrets_settings,
+        )
 
     # -------------------------------------------------------------------------
     # Application
@@ -61,14 +107,16 @@ class Settings(BaseSettings):
     @field_validator("AUTH0_ALGORITHMS", mode="before")
     @classmethod
     def parse_algorithms(cls, v: Any) -> list[str]:
-        """Accepte 'RS256' ou 'RS256,HS256' ou '["RS256"]' — identique à CORS_ORIGINS."""
+        """Accepte 'RS256', 'RS256,HS256' ou '["RS256"]'.
+
+        Appelé par pydantic APRÈS que _CommaOrJsonEnvSource a passé la valeur
+        brute (fallback JSON) — ou directement si la valeur est déjà une liste.
+        """
         if isinstance(v, str):
             v = v.strip()
             if not v:
                 return ["RS256"]
-            # Essaie JSON d'abord (["RS256"]), sinon split virgule (RS256)
             if v.startswith("["):
-                import json  # noqa: PLC0415
                 try:
                     return json.loads(v)
                 except json.JSONDecodeError:
@@ -92,7 +140,20 @@ class Settings(BaseSettings):
     @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v: Any) -> list[str]:
+        """Accepte 'https://a.com,https://b.com' ou '["https://a.com"]'.
+
+        Appelé par pydantic APRÈS que _CommaOrJsonEnvSource a passé la valeur
+        brute — ou directement si la valeur est déjà une liste.
+        """
         if isinstance(v, str):
+            v = v.strip()
+            if not v:
+                return []
+            if v.startswith("["):
+                try:
+                    return json.loads(v)
+                except json.JSONDecodeError:
+                    pass
             return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
