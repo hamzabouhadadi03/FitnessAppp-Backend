@@ -53,19 +53,27 @@ class Settings(BaseSettings):
     def settings_customise_sources(
         cls,
         settings_cls: Type[BaseSettings],
-        init_settings: PydanticBaseSettingsSource,
-        env_settings: PydanticBaseSettingsSource,
-        dotenv_settings: PydanticBaseSettingsSource,
-        secrets_settings: PydanticBaseSettingsSource,
-        **kwargs: Any,  # compatibilité pydantic-settings ≥ 2.3 (file_secret_settings…)
+        **kwargs: Any,  # absorbe tous les args quelle que soit la version de pydantic-settings
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
-        """Remplace la source env standard par notre version avec fallback JSON."""
-        return (
-            init_settings,
-            _CommaOrJsonEnvSource(settings_cls),
-            dotenv_settings,   # lecture directe du fichier .env (garde le support natif)
-            secrets_settings,
-        )
+        """Remplace la source env standard par notre version avec fallback JSON.
+
+        Utilise **kwargs pour être compatible avec TOUTES les versions de
+        pydantic-settings (2.0, 2.2, 2.3, 2.4…) qui passent des arguments
+        positionnels/nommés différents (secrets_settings, file_secret_settings…).
+        """
+        init_settings = kwargs.get("init_settings")
+        dotenv_settings = kwargs.get("dotenv_settings")
+        secrets_settings = kwargs.get("secrets_settings")
+
+        sources: list[PydanticBaseSettingsSource] = []
+        if init_settings is not None:
+            sources.append(init_settings)
+        sources.append(_CommaOrJsonEnvSource(settings_cls))
+        if dotenv_settings is not None:
+            sources.append(dotenv_settings)   # support natif du fichier .env
+        if secrets_settings is not None:
+            sources.append(secrets_settings)
+        return tuple(sources)
 
     # -------------------------------------------------------------------------
     # Application
