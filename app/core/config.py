@@ -57,6 +57,7 @@ class Settings(BaseSettings):
         env_settings: PydanticBaseSettingsSource,
         dotenv_settings: PydanticBaseSettingsSource,
         secrets_settings: PydanticBaseSettingsSource,
+        **kwargs: Any,  # compatibilité pydantic-settings ≥ 2.3 (file_secret_settings…)
     ) -> Tuple[PydanticBaseSettingsSource, ...]:
         """Remplace la source env standard par notre version avec fallback JSON."""
         return (
