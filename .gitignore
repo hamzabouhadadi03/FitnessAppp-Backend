@@ -89,3 +89,9 @@ logs/
 # Fichiers temporaires
 *.tmp
 *.bak
+
+# Scripts de configuration serveur — contiennent des IPs et détails d'infrastructure
+scripts/harden-server.sh
+
+# Fichiers Claude AI — configuration locale uniquement
+.claude/
