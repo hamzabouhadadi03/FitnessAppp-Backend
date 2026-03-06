@@ -95,3 +95,8 @@ scripts/harden-server.sh
 
 # Fichiers Claude AI — configuration locale uniquement
 .claude/
+
+# Docker Secrets — fichiers de secrets montés dans /run/secrets/
+# Créés sur le serveur via scripts/setup-secrets.sh, jamais dans git
+secrets/
+secrets/*.txt

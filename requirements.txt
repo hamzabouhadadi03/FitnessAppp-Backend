@@ -75,6 +75,11 @@ celery[redis]==5.4.0          # Worker + Beat ; [redis] inclut kombu + redis tra
 kombu==5.3.4                  # Messagerie Celery (tiré par celery, fixé pour stabilité)
 
 # ------------------------------------------------------------------
+# Monitoring — métriques Prometheus
+# ------------------------------------------------------------------
+prometheus-client==0.21.0     # Exposition des métriques /metrics (format Prometheus)
+
+# ------------------------------------------------------------------
 # Push notifications
 # ------------------------------------------------------------------
 # APNs (iOS) : HTTP/2 via httpx — h2 est le backend HTTP/2 pour httpx

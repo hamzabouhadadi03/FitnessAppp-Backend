@@ -10,17 +10,19 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 import structlog
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
+from prometheus_client import make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 from slowapi.util import get_remote_address
+from sqlalchemy import text
 
 from app.api.v1.router import api_router
 from app.core.config import get_settings
-from app.core.database import connect_db, disconnect_db
+from app.core.database import connect_db, disconnect_db, get_db
 from app.core.exceptions import (
     AppException,
     app_exception_handler,
@@ -177,6 +179,31 @@ def create_app() -> FastAPI:
     @app.get("/health", tags=["Health"], summary="Health check")
     async def health() -> dict:
         return {"status": "ok", "version": settings.APP_VERSION}
+
+    # ------------------------------------------------------------------
+    # Readiness check — vérifie la connexion DB + Redis
+    # Utilisé par le monitoring pour confirmer que l'app est prête.
+    # ------------------------------------------------------------------
+    @app.get("/ready", tags=["Health"], summary="Readiness check")
+    async def ready() -> dict:
+        from app.core.database import async_session_factory
+        try:
+            async with async_session_factory() as session:
+                await session.execute(text("SELECT 1"))
+        except Exception as exc:
+            logger.error("readiness_db_failed", error=str(exc))
+            raise HTTPException(
+                status_code=503,
+                detail={"status": "not_ready", "db": str(exc)},
+            )
+        return {"status": "ready", "version": settings.APP_VERSION}
+
+    # ------------------------------------------------------------------
+    # Métriques Prometheus — montées comme sous-application ASGI
+    # Accessibles uniquement en interne (nginx bloque /metrics publiquement).
+    # ------------------------------------------------------------------
+    metrics_app = make_asgi_app()
+    app.mount("/metrics", metrics_app)
 
     return app
 

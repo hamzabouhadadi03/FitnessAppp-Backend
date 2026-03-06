@@ -1,0 +1,129 @@
+# =============================================================================
+# FitProgress — Stack de monitoring (Prometheus + Grafana + Loki + Promtail)
+#
+# Lance séparément du stack principal :
+#   docker compose -f docker-compose.monitoring.yml up -d
+#
+# Accès Grafana : tunnel SSH puis http://localhost:3000
+#   ssh -L 3000:localhost:3000 hamza@SERVER_IP
+#
+# Variables requises dans .env :
+#   GRAFANA_ADMIN_PASSWORD=<mot-de-passe-fort>
+# =============================================================================
+version: "3.9"
+
+services:
+
+  # ---------------------------------------------------------------------------
+  # Prometheus — collecte de métriques (scrape /metrics toutes les 30s)
+  # ---------------------------------------------------------------------------
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    container_name: fitprogress_prometheus
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=15d
+      - --storage.tsdb.path=/prometheus
+      - --web.listen-address=0.0.0.0:9090
+      - --web.enable-lifecycle
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+        reservations:
+          memory: 128M
+    networks:
+      - fitprogress_network
+    # Prometheus n'est pas exposé publiquement — accessible via le réseau Docker uniquement
+
+  # ---------------------------------------------------------------------------
+  # Grafana — visualisation (métriques + logs Loki)
+  # ---------------------------------------------------------------------------
+  grafana:
+    image: grafana/grafana:10.4.0
+    container_name: fitprogress_grafana
+    ports:
+      - "127.0.0.1:3000:3000"   # Local seulement — accès via tunnel SSH
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme_grafana}
+      GF_ANALYTICS_REPORTING_ENABLED: "false"
+      GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
+      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_LOG_LEVEL: warn
+      # Auto-provisioning des datasources
+      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+    restart: unless-stopped
+    depends_on:
+      - prometheus
+      - loki
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    networks:
+      - fitprogress_network
+
+  # ---------------------------------------------------------------------------
+  # Loki — agrégation de logs (reçoit les logs de Promtail)
+  # ---------------------------------------------------------------------------
+  loki:
+    image: grafana/loki:2.9.0
+    container_name: fitprogress_loki
+    volumes:
+      - ./monitoring/loki.yml:/etc/loki/local-config.yaml:ro
+      - loki_data:/loki
+    command: -config.file=/etc/loki/local-config.yaml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    networks:
+      - fitprogress_network
+
+  # ---------------------------------------------------------------------------
+  # Promtail — agent de collecte des logs Docker → Loki
+  # ---------------------------------------------------------------------------
+  promtail:
+    image: grafana/promtail:2.9.0
+    container_name: fitprogress_promtail
+    volumes:
+      - ./monitoring/promtail.yml:/etc/promtail/config.yml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    command: -config.file=/etc/promtail/config.yml
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+        reservations:
+          memory: 32M
+    networks:
+      - fitprogress_network
+
+# Partage le réseau du stack principal pour accéder à http://app:8000/metrics
+networks:
+  fitprogress_network:
+    external: true
+    name: fitprogress-backend_fitprogress_network
+
+volumes:
+  prometheus_data:
+    driver: local
+  grafana_data:
+    driver: local
+  loki_data:
+    driver: local

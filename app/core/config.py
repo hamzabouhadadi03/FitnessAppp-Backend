@@ -47,6 +47,9 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         case_sensitive=False,
         extra="ignore",
+        # Lit aussi les fichiers dans /run/secrets/<field_name> (Docker Compose secrets).
+        # En dev, le répertoire n'existe pas → pydantic-settings l'ignore silencieusement.
+        secrets_dir="/run/secrets",
     )
 
     @classmethod

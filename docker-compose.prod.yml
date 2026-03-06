@@ -16,6 +16,14 @@ services:
     container_name: fitprogress_app_prod
     env_file:
       - .env
+    # Secrets Docker montés dans /run/secrets/<nom> — lus par pydantic-settings (secrets_dir)
+    # Ces variables ne sont plus visibles via "docker inspect"
+    secrets:
+      - secret_key
+      - database_url
+      - redis_url
+      - apns_private_key
+      - fcm_service_account_json
     expose:
       - "8000"
     depends_on:
@@ -117,6 +125,12 @@ services:
     container_name: fitprogress_celery_worker_prod
     env_file:
       - .env
+    secrets:
+      - secret_key
+      - database_url
+      - redis_url
+      - apns_private_key
+      - fcm_service_account_json
     command: celery -A app.core.celery_app worker --loglevel=info --queues=default,notifications --concurrency=4
     depends_on:
       postgres:
@@ -143,6 +157,8 @@ services:
     container_name: fitprogress_celery_beat_prod
     env_file:
       - .env
+    secrets:
+      - redis_url
     command: celery -A app.core.celery_app beat --loglevel=info --scheduler celery.beat:PersistentScheduler --schedule=/tmp/celerybeat-schedule
     depends_on:
       - redis
@@ -153,6 +169,25 @@ services:
           memory: 128M
     networks:
       - fitprogress_network
+
+# =============================================================================
+# Secrets Docker (file-based) — montés dans /run/secrets/<nom> dans chaque container.
+# Créés sur le serveur via scripts/setup-secrets.sh (jamais dans git).
+# pydantic-settings les lit automatiquement grâce à secrets_dir="/run/secrets".
+# Impact : SECRET_KEY, DATABASE_URL, REDIS_URL, etc. ne sont plus visibles
+#          via "docker inspect" dans la liste des variables d'environnement.
+# =============================================================================
+secrets:
+  secret_key:
+    file: ./secrets/secret_key.txt
+  database_url:
+    file: ./secrets/database_url.txt
+  redis_url:
+    file: ./secrets/redis_url.txt
+  apns_private_key:
+    file: ./secrets/apns_private_key.txt
+  fcm_service_account_json:
+    file: ./secrets/fcm_service_account_json.txt
 
 volumes:
   postgres_data:
