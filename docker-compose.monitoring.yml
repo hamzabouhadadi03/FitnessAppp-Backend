@@ -92,9 +92,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 128M
+          memory: 256M   # Augmenté : 128M était à 73.9% (risque OOM si logs croissent)
         reservations:
-          memory: 64M
+          memory: 128M
     networks:
       - fitprogress_network
 
@@ -113,9 +113,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 64M
+          memory: 128M   # Augmenté : 64M était à 64.79% (collecte logs Docker = croissance)
         reservations:
-          memory: 32M
+          memory: 64M
     networks:
       - fitprogress_network
 
