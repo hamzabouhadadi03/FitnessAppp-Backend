@@ -31,6 +31,12 @@ limits_config:
   retention_period: 30d
   ingestion_rate_mb: 4
   ingestion_burst_size_mb: 6
+  # Accepte les logs jusqu'à 7 jours dans le passé.
+  # Sans cette config, Loki rejette les logs avec un timestamp > ~1h (défaut)
+  # ce qui provoque des erreurs "entry too far behind" après chaque redémarrage
+  # de conteneur — les logs buffеrisés par Promtail pendant la downtime sont rejetés.
+  reject_old_samples: true
+  reject_old_samples_max_age: 168h
 
 compactor:
   working_directory: /loki/compactor
