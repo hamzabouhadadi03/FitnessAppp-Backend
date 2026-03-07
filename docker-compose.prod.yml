@@ -59,6 +59,8 @@ services:
     volumes:
       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/ssl-monitoring:/etc/nginx/ssl-monitoring:ro     # Cert Let's Encrypt monitoring.fitprogress.ovh
+      - ./nginx/monitoring.htpasswd:/etc/nginx/monitoring.htpasswd:ro  # Basic Auth (généré par setup-monitoring-access.sh)
       - certbot_www:/var/www/certbot
       - nginx_logs:/var/log/nginx
     depends_on:

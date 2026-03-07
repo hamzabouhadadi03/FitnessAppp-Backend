@@ -46,14 +46,19 @@ services:
   grafana:
     image: grafana/grafana:10.4.0
     container_name: fitprogress_grafana
-    ports:
-      - "127.0.0.1:3000:3000"   # Local seulement — accès via tunnel SSH
+    # Port SSH désactivé — accès via https://monitoring.fitprogress.ovh (nginx reverse proxy)
+    # Pour accès d'urgence : ssh -L 3000:fitprogress_grafana:3000 hamza@SERVER_IP
+    #ports:
+    #  - "127.0.0.1:3000:3000"
     environment:
       GF_SECURITY_ADMIN_USER: admin
       GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-changeme_grafana}
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
-      GF_SERVER_ROOT_URL: "%(protocol)s://%(domain)s/grafana/"
+      GF_SERVER_ROOT_URL: "https://monitoring.fitprogress.ovh/"
+      GF_SERVER_SERVE_FROM_SUB_PATH: "false"
+      # Basic Auth gérée par Nginx — désactiver le login Grafana natif n'est pas nécessaire
+      # car nginx demande l'auth AVANT que la requête n'atteigne Grafana
       GF_LOG_LEVEL: warn
       # Auto-provisioning des datasources
       GF_PATHS_PROVISIONING: /etc/grafana/provisioning

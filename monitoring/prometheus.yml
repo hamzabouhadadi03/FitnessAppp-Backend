@@ -8,9 +8,11 @@ global:
 
 scrape_configs:
   # API FastAPI — métriques applicatives (/metrics exposé par prometheus-client)
+  # Utilise le nom de conteneur (container_name) et non le service name :
+  # le DNS cross-stack Docker ne résout que les noms de conteneurs, pas les services.
   - job_name: fitprogress_api
     static_configs:
-      - targets: ['app:8000']
+      - targets: ['fitprogress_app_prod:8000']
     metrics_path: /metrics
     scrape_interval: 30s
 

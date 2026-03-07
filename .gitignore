@@ -81,6 +81,12 @@ Thumbs.db
 nginx/ssl/*.pem
 nginx/ssl/*.key
 nginx/ssl/*.crt
+nginx/ssl-monitoring/*.pem
+nginx/ssl-monitoring/*.key
+nginx/ssl-monitoring/*.crt
+
+# Basic Auth monitoring — généré par scripts/setup-monitoring-access.sh
+nginx/monitoring.htpasswd
 
 # Logs
 *.log
