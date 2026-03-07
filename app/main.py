@@ -5,6 +5,8 @@ Sécurité avant tout : en-têtes, CORS, limitation de débit, traçage des iden
 """
 from __future__ import annotations
 
+import re
+import time
 import uuid
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
@@ -13,7 +15,7 @@ import structlog
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from prometheus_client import make_asgi_app
+from prometheus_client import Counter, Histogram, make_asgi_app
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
@@ -34,6 +36,22 @@ from app.core.logging import configure_logging
 settings = get_settings()
 configure_logging()
 logger = structlog.get_logger(__name__)
+
+# ---------------------------------------------------------------------------
+# Métriques Prometheus — définies au niveau module (singletons)
+# Permettent de remplir les panels HTTP du dashboard Grafana.
+# ---------------------------------------------------------------------------
+HTTP_REQUESTS_TOTAL = Counter(
+    "http_requests_total",
+    "Nombre total de requêtes HTTP",
+    ["method", "endpoint", "status"],
+)
+HTTP_REQUEST_DURATION = Histogram(
+    "http_request_duration_seconds",
+    "Durée des requêtes HTTP en secondes",
+    ["method", "endpoint"],
+    buckets=(0.005, 0.01, 0.025, 0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0),
+)
 
 # ---------------------------------------------------------------------------
 # Limiteur de débit
@@ -147,10 +165,31 @@ def create_app() -> FastAPI:
             path=request.url.path,
         )
 
-        import time
         start = time.perf_counter()
         response: Response = await call_next(request)
-        duration_ms = round((time.perf_counter() - start) * 1000, 2)
+        duration_s = time.perf_counter() - start
+        duration_ms = round(duration_s * 1000, 2)
+
+        # Normalise le path pour éviter une cardinalité infinie dans Prometheus.
+        # /api/v1/users/uuid-xyz → /api/v1/users/{id}
+        path = request.url.path
+        # Remplace les UUID et les segments numériques par un placeholder générique.
+        path_label = re.sub(
+            r"/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}",
+            "/{id}",
+            path,
+        )
+        path_label = re.sub(r"/\d+", "/{id}", path_label)
+
+        HTTP_REQUESTS_TOTAL.labels(
+            method=request.method,
+            endpoint=path_label,
+            status=str(response.status_code),
+        ).inc()
+        HTTP_REQUEST_DURATION.labels(
+            method=request.method,
+            endpoint=path_label,
+        ).observe(duration_s)
 
         logger.info(
             "request_completed",
