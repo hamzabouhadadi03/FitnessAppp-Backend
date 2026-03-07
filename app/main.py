@@ -110,44 +110,11 @@ def create_app() -> FastAPI:
     )
 
     # ------------------------------------------------------------------
-    # Middleware des en-têtes de sécurité
+    # NOTE : Les en-têtes de sécurité (X-Content-Type-Options, X-Frame-Options,
+    # X-XSS-Protection, Referrer-Policy, CSP, HSTS) sont gérés EXCLUSIVEMENT
+    # par Nginx (nginx/nginx.conf — add_header au niveau server block).
+    # FastAPI ne les duplique pas — Nginx est l'unique source de vérité.
     # ------------------------------------------------------------------
-    @app.middleware("http")
-    async def security_headers_middleware(request: Request, call_next: any) -> Response:
-        response: Response = await call_next(request)
-        response.headers["X-Content-Type-Options"] = "nosniff"
-        response.headers["X-Frame-Options"] = "DENY"
-        response.headers["X-XSS-Protection"] = "1; mode=block"
-        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-
-        # Swagger UI (en développement) charge des ressources depuis des CDN externes :
-        #   - CSS  : cdn.jsdelivr.net
-        #   - JS   : cdn.jsdelivr.net
-        #   - Fonts: fonts.googleapis.com / fonts.gstatic.com
-        # Le CSP strict "default-src 'none'" bloque tout cela et rend /docs vide.
-        # Solution : on applique un CSP permissif uniquement pour les routes de doc,
-        # et le CSP strict pour toutes les autres routes.
-        # En production les routes /docs, /redoc, /openapi.json sont désactivées
-        # donc cette exception ne s'applique jamais en prod.
-        docs_paths = {"/docs", "/redoc", "/openapi.json"}
-        if request.url.path in docs_paths:
-            # CSP permissif pour Swagger UI / ReDoc
-            response.headers["Content-Security-Policy"] = (
-                "default-src 'self'; "
-                "script-src 'self' 'unsafe-inline' cdn.jsdelivr.net; "
-                "style-src 'self' 'unsafe-inline' cdn.jsdelivr.net fonts.googleapis.com; "
-                "font-src fonts.gstatic.com; "
-                "img-src 'self' data:;"
-            )
-        else:
-            # CSP strict pour toutes les autres routes (API, health, etc.)
-            response.headers["Content-Security-Policy"] = "default-src 'none'"
-
-        if settings.is_production:
-            response.headers["Strict-Transport-Security"] = (
-                "max-age=31536000; includeSubDomains"
-            )
-        return response
 
     # ------------------------------------------------------------------
     # Middleware d'identifiant de requête + journalisation structurée
